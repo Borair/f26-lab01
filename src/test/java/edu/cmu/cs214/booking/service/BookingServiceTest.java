@@ -58,4 +58,20 @@ class BookingServiceTest {
         svc.book(roomA, bob, new TimeInterval(660, 720));
         assertEquals(2, svc.listBookings(roomA).size());
     }
+
+    // Regression test for the root cause of
+    // sameSlotInDifferentRoomsAreBothConfirmed: bookingsForRoom() used to return
+    // every booking in the store, so a booking in room B blocked the same slot
+    // in room A. listBookings() delegates to the very same store method.
+    @Test
+    void listBookingsReturnsOnlyTheBookingsOfThatRoom() {
+        BookingService svc = newService();
+        svc.book(roomA, alice, new TimeInterval(600, 660));
+        svc.book(roomB, bob, new TimeInterval(600, 660));
+
+        assertEquals(1, svc.listBookings(roomA).size(), "room A must only see its own booking");
+        assertEquals(1, svc.listBookings(roomB).size(), "room B must only see its own booking");
+        assertEquals("A", svc.listBookings(roomA).get(0).room().id());
+        assertEquals("B", svc.listBookings(roomB).get(0).room().id());
+    }
 }
