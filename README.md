@@ -25,3 +25,12 @@ By the way: the fix may not be where the failing test first points you. :-)
 - Transcript export script (for Claude Code; modify if using a different tool): `tools/export-transcripts.sh` (the handout tells you when to run it)
 
 See the Lab 1 handout on the course page for the three milestones you show a TA.
+
+## 工具与模型声明
+
+- 工具：Claude Code（命令行 2.1.285）；IDE：IntelliJ IDEA；构建：Maven 3.9.13 + JDK 21.0.10；版本控制：Git 2.55
+- 模型：`kimi-k3[1m]`（Claude Code 经 Anthropic 兼容端点接入）
+
+## 本机运行提示
+
+本机用户目录含中文，Maven Surefire 派生 JVM 会崩溃，请用 `mvn -DforkCount=0 test` 运行测试。
