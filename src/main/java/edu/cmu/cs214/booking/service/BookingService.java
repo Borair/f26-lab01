@@ -46,4 +46,16 @@ public class BookingService {
     public List<Booking> listBookings(Room room) {
         return store.bookingsForRoom(room);
     }
+
+    /**
+     * Cancels the booking with the given id. Unknown ids are ignored silently:
+     * no exception is thrown and nothing is promoted from the waitlist.
+     * (Waitlist promotion on cancel is intentionally not implemented yet.)
+     */
+    public void cancelBooking(String bookingId) {
+        if (store.findBooking(bookingId).isEmpty()) {
+            return;
+        }
+        store.removeBooking(bookingId);
+    }
 }
