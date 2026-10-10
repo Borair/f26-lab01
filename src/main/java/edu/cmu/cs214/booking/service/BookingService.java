@@ -49,8 +49,9 @@ public class BookingService {
     }
 
     /**
-     * Cancels the confirmed booking with {@code bookingId}, freeing its slot.
-     * If no booking has that id, this method does nothing.
+     * Cancels the confirmed booking with {@code bookingId}, freeing its slot, and
+     * promotes the earliest waitlisted user whose interval is now free. If no
+     * booking has that id, this method does nothing.
      */
     public void cancelBooking(String bookingId) {
         Optional<Booking> booking = store.findBooking(bookingId);
@@ -58,5 +59,29 @@ public class BookingService {
             return;
         }
         store.removeBooking(bookingId);
+        promoteFromWaitlist(booking.get().room());
+    }
+
+    /**
+     * Promotes the earliest waitlisted user (first-come-first-served by {@code seq})
+     * whose interval no longer overlaps any confirmed booking, at most one per call.
+     */
+    private void promoteFromWaitlist(Room room) {
+        List<WaitlistEntry> waiters = store.waitlistForRoom(room).stream()
+                .sorted(java.util.Comparator.comparingInt(WaitlistEntry::seq))
+                .toList();
+        for (WaitlistEntry waiter : waiters) {
+            if (isFree(room, waiter.interval())) {
+                store.removeWaitlistEntry(waiter.id());
+                store.addBooking(new Booking("b" + nextBookingSeq++, room, waiter.user(), waiter.interval()));
+                return;
+            }
+        }
+    }
+
+    /** Returns true if {@code interval} overlaps no confirmed booking in {@code room}. */
+    private boolean isFree(Room room, TimeInterval interval) {
+        return store.bookingsForRoom(room).stream()
+                .noneMatch(b -> b.interval().overlaps(interval));
     }
 }
