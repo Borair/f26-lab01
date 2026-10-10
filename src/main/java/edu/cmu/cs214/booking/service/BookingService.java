@@ -49,12 +49,8 @@ public class BookingService {
      * check availability before attempting to book.
      */
     public boolean isAvailable(Room room, TimeInterval interval) {
-        for (Booking b : store.bookingsForRoom(room)) {
-            if (b.interval().start() >= interval.start() && b.interval().start() < interval.end()) {
-                return false;
-            }
-        }
-        return true;
+        return store.bookingsForRoom(room).stream()
+                .noneMatch(b -> b.interval().overlaps(interval));
     }
 
     /** Returns the confirmed bookings for {@code room}. */
