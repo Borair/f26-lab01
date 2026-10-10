@@ -6,7 +6,10 @@ import edu.cmu.cs214.booking.domain.TimeInterval;
 import edu.cmu.cs214.booking.domain.User;
 import edu.cmu.cs214.booking.domain.WaitlistEntry;
 import edu.cmu.cs214.booking.repo.BookingStore;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Coordinates bookings and the waitlist. Enforces the core invariant: a room
@@ -50,12 +53,39 @@ public class BookingService {
     /**
      * Cancels the booking with the given id. Unknown ids are ignored silently:
      * no exception is thrown and nothing is promoted from the waitlist.
-     * (Waitlist promotion on cancel is intentionally not implemented yet.)
+     *
+     * <p>After a real cancellation, the canceled booking's room waitlist is
+     * scanned in {@code seq} order (first-come-first-served). The first waiter
+     * whose interval does not overlap any of the room's remaining confirmed
+     * bookings is promoted: a fresh confirmed booking is created for them and
+     * their waitlist entry is removed. At most one waiter is promoted per
+     * cancellation; if every waiter still conflicts, nobody is promoted.
      */
     public void cancelBooking(String bookingId) {
-        if (store.findBooking(bookingId).isEmpty()) {
+        Optional<Booking> canceled = store.findBooking(bookingId);
+        if (canceled.isEmpty()) {
             return;
         }
+        Room room = canceled.get().room();
         store.removeBooking(bookingId);
+
+        List<WaitlistEntry> waitlist = new ArrayList<>(store.waitlistForRoom(room));
+        waitlist.sort(Comparator.comparingInt(WaitlistEntry::seq));
+        for (WaitlistEntry entry : waitlist) {
+            boolean conflicts = false;
+            for (Booking existing : store.bookingsForRoom(room)) {
+                if (existing.interval().overlaps(entry.interval())) {
+                    conflicts = true;
+                    break;
+                }
+            }
+            if (!conflicts) {
+                Booking promoted =
+                    new Booking("b" + nextBookingSeq++, room, entry.user(), entry.interval());
+                store.addBooking(promoted);
+                store.removeWaitlistEntry(entry.id());
+                return;
+            }
+        }
     }
 }
